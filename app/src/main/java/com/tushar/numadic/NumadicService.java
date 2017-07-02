@@ -5,6 +5,8 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.location.GpsSatellite;
+import android.location.GpsStatus;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -19,6 +21,7 @@ import android.telephony.TelephonyManager;
 import android.util.Log;
 
 import java.io.File;
+import java.util.Iterator;
 
 import static com.tushar.numadic.Utility.calculateDistance;
 import static com.tushar.numadic.Utility.getBatteryPercentage;
@@ -40,6 +43,8 @@ public class NumadicService extends Service {
 
     private Runnable locationRunnable;
     private Runnable healthRunnable;
+
+    private int satelliteCount = 0;
 
     private enum ServiceMode {
         Active,
@@ -82,19 +87,7 @@ public class NumadicService extends Service {
     }
 
     private void locationScheduler() {
-
-        if (isValidated()) {
-            trackLocation();
-        }
-    }
-
-    private boolean isValidated() {
-        boolean success = true;
-
-//        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
-//            GnssStatus gnssStatus = new GnssStatus();
-//        }
-        return success;
+        trackLocation();
     }
 
 
@@ -147,10 +140,14 @@ public class NumadicService extends Service {
         }
 
         locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+
+        locationManager.addGpsStatusListener(listener);
+
         locationListener = new LocationListener() {
 
             @Override
             public void onLocationChanged(Location location) {
+                Log.d(DEBUG_TAG, "satellite count " + satelliteCount);
 
                 double velocityValue = 0;
 
@@ -172,18 +169,22 @@ public class NumadicService extends Service {
                     scheduleLocationTask(SCHEDULE_TIME_LOCATION_IDLE);
                 }
 
-                new DataManager(NumadicService.this).setLocation(new LocationData(location.getLatitude(), location.getLongitude()));
                 locationManager.removeUpdates(locationListener);
 
-                // Save LocationData in the file;
-                NFileManager fileManager = new NFileManager();
-                File file = fileManager.getLocationFile(NumadicService.this);
+                // Validation : Save Only If 5 Satellites foundand accuracy between 2 to 15
+                if (satelliteCount > 5 && (location.getAccuracy() > 2.0 && location.getAccuracy() < 15.0)) {
+                    new DataManager(NumadicService.this).setLocation(new LocationData(location.getLatitude(), location.getLongitude()));
 
-                String locationValue = "Latitude: " + location.getLatitude() + " Longitude : " + location.getLongitude() + " UTC Time: " + TimeManager.getCurrentUTCTime() + " Velocity :"
-                        + velocityValue + " Accuracy :" + location.getAccuracy();
+                    // Save LocationData in the file;
+                    NFileManager fileManager = new NFileManager();
+                    File file = fileManager.getLocationFile(NumadicService.this);
 
-                Log.d(DEBUG_TAG, locationValue);
-                fileManager.writeToAFile(file, locationValue);
+                    String locationValue = "Latitude: " + location.getLatitude() + " Longitude : " + location.getLongitude() + " UTC Time: " + TimeManager.getCurrentUTCTime() + " Velocity :"
+                            + velocityValue + " Accuracy :" + location.getAccuracy() + " Satellites Count : " + satelliteCount;
+
+                    Log.d(DEBUG_TAG, locationValue);
+                    fileManager.writeToAFile(file, locationValue);
+                }
             }
 
             public void onStatusChanged(String provider, int status, Bundle extras) {
@@ -207,6 +208,28 @@ public class NumadicService extends Service {
         locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
     }
 
+
+    GpsStatus.Listener listener = new GpsStatus.Listener() {
+        @Override
+        public void onGpsStatusChanged(int i) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    return;
+                }
+            }
+            GpsStatus gpsStatus = locationManager.getGpsStatus(null);
+            if (gpsStatus != null) {
+                Iterable<GpsSatellite> satellites = gpsStatus.getSatellites();
+                Iterator<GpsSatellite> sat = satellites.iterator();
+                satelliteCount = 0;
+                while (sat.hasNext()) {
+                    satelliteCount++;
+                    sat.next();
+                }
+                locationManager.removeGpsStatusListener(listener);
+            }
+        }
+    };
 
     private void healthScheduler(Context context) {
 
