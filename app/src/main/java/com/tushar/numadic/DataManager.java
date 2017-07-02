@@ -14,6 +14,7 @@ class DataManager {
     private static final String LONGITUDE = "longitude";
     private static final String SERVICE_STATUS = "service.status";
     private static final String SERVICE_START_TIME = "service.start_time";
+    private static final String SERVICE_ENABLED = "service.enabled";
 
 
     private static final int PRIVATE_MODE = 0;
@@ -91,4 +92,13 @@ class DataManager {
     String getServiceStartTime() {
         return preferences.getString(SERVICE_START_TIME, null);
     }
+
+
+//    void setServiceEnabled(boolean value) {
+//        preferences.edit().putBoolean(SERVICE_ENABLED, value).apply();
+//    }
+//
+//    boolean isServiceEnabled() {
+//        return preferences.getBoolean(SERVICE_ENABLED, true);
+//    }
 }

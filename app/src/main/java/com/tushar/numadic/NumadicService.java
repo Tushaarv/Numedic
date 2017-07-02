@@ -1,173 +1,141 @@
 package com.tushar.numadic;
 
 import android.Manifest;
-import android.app.IntentService;
+import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
-import android.net.ConnectivityManager;
 import android.net.wifi.WifiManager;
-import android.os.BatteryManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.IBinder;
 import android.telephony.CellInfoGsm;
 import android.telephony.CellSignalStrengthGsm;
 import android.telephony.TelephonyManager;
+import android.util.Log;
 
 import java.io.File;
 
+import static com.tushar.numadic.Utility.calculateDistance;
+import static com.tushar.numadic.Utility.getBatteryPercentage;
 
-public class NumadicService extends IntentService {
+
+public class NumadicService extends Service {
+
+    private static final String DEBUG_TAG = "NumadicService";
 
     private LocationManager locationManager;
     private LocationListener locationListener;
+
+    private Handler locationHandler;
+    private Handler healthHandler;
+
+    private Runnable locationRunnable;
+    private Runnable healthRunnable;
 
     private enum ServiceMode {
         Active,
         Idle
     }
 
-    private enum NetworkMode {
-        WIFI,
-        MOBILE,
-        NO_NETWORK
-    }
-
     private int currentLocationDuration = 30;
 
     private ServiceMode serviceMode;
 
-    public NumadicService() {
-        super("NumadicService");
+    @Override
+    public void onDestroy() {
+
+        if (locationHandler != null) {
+            locationHandler.removeCallbacks(locationRunnable);
+        }
+        if (healthHandler != null) {
+            healthHandler.removeCallbacks(healthRunnable);
+        }
+
+        super.onDestroy();
     }
 
     @Override
-    protected void onHandleIntent(Intent intent) {
+    public IBinder onBind(Intent intent) {
 
+        return null;
     }
 
     @Override
-    public void onStart(Intent intent, int startId) {
-        super.onStart(intent, startId);
-        System.out.println("Service Started");
+    public int onStartCommand(Intent intent, int flags, int startId) {
 
         serviceMode = ServiceMode.Idle;
 
         locationScheduler();
-//        healthScheduler(this);
+        healthScheduler(this);
+
+        return super.onStartCommand(intent, flags, startId);
 
     }
 
     private void locationScheduler() {
 
-        System.out.println("locationScheduler called");
-
         if (isValidated()) {
             trackLocation();
         }
-
-//        LocationData location = new DataManager(context).getLocation();
-//        if (isValidated()) {
-//            trackLocation();
-//
-//            if (evaluateServiceMode(location) == ServiceMode.Idle) {
-//                scheduleLocationTask(30);
-//            } else {
-//                scheduleLocationTask(2);
-//            }
-//        } else {
-//            if (evaluateServiceMode(location) == ServiceMode.Idle) {
-//                scheduleLocationTask(30);
-//            } else {
-//                scheduleLocationTask(2);
-//            }
-//        }
-
-
-        // 1 If last location is not known
-        // 2 Find Location
-        // 3 Decide Service Mode
-        // 4 If Service Mode is Active
-        // 5 Schedule next Itiration for 2 minutes
-        // 6 If Service Mode is Idle
-        // 7 Schedule next Itiration for 30 minutes
-        // 8 If last location is known
-        // 2 Find Location
-        // 3 Decide Service Mode
-        // 4 If Service Mode is Active
-        // 5 Schedule next Itiration for 2 minutes
-        // 6 If Service Mode is Idle
-        // 5 Schedule next Itiration for 30 minutes
     }
 
+    private boolean isValidated() {
+        boolean success = true;
+
+//        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+//            GnssStatus gnssStatus = new GnssStatus();
+//        }
+        return success;
+    }
+
+
+    /**
+     * Evaluates Service Modes
+     * Active Mode if :
+     * 1. If current speed is more than 5 KMPH OR
+     * 2. if user has moved for more than 50m since last location
+     * Idle Otherwise
+     *
+     * @param distance distance travelled since last location capture
+     * @param velocity current velocity calculated based on last location
+     * @return applicable service mode
+     */
     private ServiceMode evaluateServiceMode(double distance, double velocity) {
         ServiceMode serviceMode;
-
-        // If your current speed is more than 5 KMPH
-        // If you have moved for more than 50m since last location
-        // Then Active
 
         if (velocity > 5 || distance * 1000 > 50) {
             serviceMode = ServiceMode.Active;
         } else {
-            // Otherwise Idle.
             serviceMode = ServiceMode.Idle;
         }
 
         return serviceMode;
     }
 
-    private void healthScheduler(Context context) {
-
-        // 2 Find Health
-        trackHealth(context);
-        // 5 Schedule next Itiration for 10 minutes
-        scheduleHealthTask(2);
-    }
-
-    private boolean isValidated() {
-        boolean success = true;
-
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
-//            GnssStatus gnssStatus = new GnssStatus();
-        }
-
-
-        return success;
-    }
-
-    private void scheduleHealthTask(int duration) {
-
-        final Handler handler = new Handler();
-        handler.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                healthScheduler(NumadicService.this);
-            }
-        }, 1000 * duration);
-    }
 
     private void scheduleLocationTask(int duration) {
 
-        final Handler handler = new Handler();
-        handler.postDelayed(new Runnable() {
+        locationHandler = new Handler();
+        locationRunnable = new Runnable() {
             @Override
             public void run() {
                 locationScheduler();
             }
-        }, 1000 * duration);
+        };
+
+        locationHandler.postDelayed(locationRunnable, 1000 * duration);
     }
 
     private void trackLocation() {
 
         final LocationData lastLocation = new DataManager(this).getLocation();
 
-        // Get Location
+        // Clear previous instance as precaution if it is not cleared
         if (locationManager != null) {
             locationManager.removeUpdates(locationListener);
             locationManager = null;
@@ -180,7 +148,6 @@ public class NumadicService extends IntentService {
             @Override
             public void onLocationChanged(Location location) {
 
-                System.out.println("Current Location Latitude: " + location.getLatitude() + " Longitude: " + location.getLongitude());
                 double velocityValue = 0;
 
                 if (lastLocation != null) {
@@ -189,27 +156,29 @@ public class NumadicService extends IntentService {
                     double timeValue = currentLocationDuration;
                     velocityValue = distance / timeValue;
 
-                    System.out.println("Distance: " + distance + " Time: " + timeValue + " Velocity:" + velocityValue);
-
                     locationManager.removeUpdates(locationListener);
-                    evaluateServiceMode(distance, velocityValue);
 
+                    evaluateServiceMode(distance, velocityValue);
                     if (serviceMode == ServiceMode.Active) {
                         scheduleLocationTask(2);
                     } else {
                         scheduleLocationTask(30);
                     }
+                } else {
+                    scheduleLocationTask(30);
                 }
 
                 new DataManager(NumadicService.this).setLocation(new LocationData(location.getLatitude(), location.getLongitude()));
+                locationManager.removeUpdates(locationListener);
 
                 // Save LocationData in the file;
                 NFileManager fileManager = new NFileManager();
                 File file = fileManager.getLocationFile(NumadicService.this);
 
-//                Lat , Lon , UTC Time, Velocity, Accuracy, Satellites used
                 String locationValue = "Latitude: " + location.getLatitude() + " Longitude : " + location.getLongitude() + " UTC Time: " + TimeManager.getCurrentUTCTime() + " Velocity :"
-                        + velocityValue + " Accuracy :" + location.getAccuracy();  //+ " Satellites Used : " + location.ssa;
+                        + velocityValue + " Accuracy :" + location.getAccuracy();
+
+                Log.d(DEBUG_TAG, locationValue);
                 fileManager.writeToAFile(file, locationValue);
             }
 
@@ -225,90 +194,47 @@ public class NumadicService extends IntentService {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED && checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
-                locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
 
+                // This check is done just to satisfy android
+                // Location permissions are granted in activity itself
             }
-        } else {
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
-            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
         }
+
+        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
+        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
+
     }
 
 
-    private double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
-        double theta = lon1 - lon2;
-        double dist = Math.sin(deg2rad(lat1))
-                * Math.sin(deg2rad(lat2))
-                + Math.cos(deg2rad(lat1))
-                * Math.cos(deg2rad(lat2))
-                * Math.cos(deg2rad(theta));
-        dist = Math.acos(dist);
-        dist = rad2deg(dist);
-        dist = dist * 60 * 1.1515;
-        return (dist);
+    private void healthScheduler(Context context) {
+
+        // Find Health
+        trackHealth(context);
+        // Schedule next Iteration after 10 minutes
+        scheduleHealthTask(10);
     }
 
-    private double deg2rad(double deg) {
-        return (deg * Math.PI / 180.0);
-    }
+    private void scheduleHealthTask(int duration) {
 
-    private double rad2deg(double rad) {
-        return (rad * 180.0 / Math.PI);
+        healthHandler = new Handler();
+        healthRunnable = new Runnable() {
+            @Override
+            public void run() {
+                healthScheduler(NumadicService.this);
+            }
+        };
+
+        healthHandler.postDelayed(healthRunnable, 1000 * (duration * 60));
     }
 
     private void trackHealth(Context context) {
 
         // Get Health Data
         String healthStatus = " ";
+        healthStatus = healthStatus + "\n " + getBatteryUsageData();
 
-        // Battery Usage
-        String batteryUsage = String.valueOf(getBatteryPercentage(NumadicService.this));
-        System.out.println("Current Battery Level:" + batteryUsage);
-        healthStatus = healthStatus + "Battery Status:" + batteryUsage;
-
-        NetworkMode networkMode = checkNetworkStatus(context);
-
-        if (networkMode == NetworkMode.NO_NETWORK) {
-            System.out.println(" Network Status: Network Not Available");
-            healthStatus = healthStatus + "\n Network Status: Network Not Available";
-        } else if (networkMode == NetworkMode.WIFI) {
-            System.out.println(" Network Status: WIFI Network");
-            healthStatus = healthStatus + "\n Network Status: WIFI Network";
-
-            // WIFI Network Details
-            WifiManager wifiManager = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-            String wifiNetworkId = wifiManager.getConnectionInfo().getSSID();
-            String wifiSpeed = String.valueOf(wifiManager.getConnectionInfo().getRssi());
-
-            System.out.println(" WIFI Network Id: " + wifiNetworkId);
-            System.out.println(" WIFI Speed: " + wifiSpeed);
-
-            healthStatus = healthStatus + "\n WIFI Network Id: " + wifiNetworkId;
-            healthStatus = healthStatus + "\n WIFI Speed: " + wifiSpeed;
-
-
-        } else if (networkMode == NetworkMode.MOBILE) {
-            healthStatus = healthStatus + "\n Network Status: Mobile Network";
-            System.out.println(" Network Status: Mobile Network");
-
-            // Mobile Network Details
-            TelephonyManager telephonyManager = (TelephonyManager) this.getSystemService(Context.TELEPHONY_SERVICE);
-            CellInfoGsm cellinfogsm = (CellInfoGsm) telephonyManager.getAllCellInfo().get(0);
-            CellSignalStrengthGsm cellSignalStrengthGsm = cellinfogsm.getCellSignalStrength();
-
-            String mobileNetworkId = String.valueOf(telephonyManager.getNetworkOperatorName());
-            String mobileNetworkSpeed = String.valueOf(cellSignalStrengthGsm.getDbm());
-
-
-            System.out.println(" Mobile Network Id: " + mobileNetworkId);
-            System.out.println(" Mobile Speed: " + mobileNetworkSpeed);
-
-            healthStatus = healthStatus + "\n Mobile Network Id: " + mobileNetworkId;
-            healthStatus = healthStatus + "\n Mobile Speed: " + mobileNetworkSpeed;
-        }
-
-        System.out.println("Combine Health Status:" + healthStatus);
+        // Network Usage
+        healthStatus = healthStatus + "\n " + getNetworkUsageData();
 
         // Save Health Data in a file
         NFileManager fileManager = new NFileManager();
@@ -316,37 +242,50 @@ public class NumadicService extends IntentService {
         fileManager.writeToAFile(file, healthStatus);
     }
 
+    /**
+     * Retrieves battery usage data
+     *
+     * @return
+     */
+    private String getBatteryUsageData() {
 
-    public static int getBatteryPercentage(Context context) {
-
-        IntentFilter iFilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
-        Intent batteryStatus = context.registerReceiver(null, iFilter);
-
-        int level = batteryStatus != null ? batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) : -1;
-        int scale = batteryStatus != null ? batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1) : -1;
-
-        float batteryPct = level / (float) scale;
-
-        return (int) (batteryPct * 100);
+        String batteryUsage = String.valueOf(getBatteryPercentage(NumadicService.this));
+        Log.d(DEBUG_TAG, "Current Battery Level:" + batteryUsage);
+        return "Battery Status:" + batteryUsage;
     }
 
+    /**
+     * Retrieves network usage data
+     */
+    private String getNetworkUsageData() {
 
-    private NetworkMode checkNetworkStatus(Context context) {
+        Utility.NetworkMode networkMode = Utility.getNetworkMode(NumadicService.this);
+        if (networkMode == Utility.NetworkMode.NO_NETWORK) {
+            Log.d(DEBUG_TAG, " Network Status: Network Not Available");
+            return "Network Status: Network Not Available";
+        } else if (networkMode == Utility.NetworkMode.WIFI) {
 
-        NetworkMode networkMode;
-        final ConnectivityManager manager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
-        final android.net.NetworkInfo wifi = manager.getActiveNetworkInfo();
-        final android.net.NetworkInfo mobile = manager.getActiveNetworkInfo();
+            // WIFI Network Details
+            WifiManager wifiManager = (WifiManager) NumadicService.this.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+            String status = " Network Status: WIFI Network, Network Id: " + wifiManager.getConnectionInfo().getSSID() + ", Speed: " + wifiManager.getConnectionInfo().getRssi();
 
-        if (wifi == null && mobile == null) {
-            networkMode = NetworkMode.NO_NETWORK;
-        } else if (wifi != null && wifi.getType() == ConnectivityManager.TYPE_WIFI) {
-            networkMode = NetworkMode.WIFI;
-        } else if (mobile != null && mobile.getType() == ConnectivityManager.TYPE_MOBILE) {
-            networkMode = NetworkMode.MOBILE;
+            Log.d(DEBUG_TAG, status);
+            return status;
+
+        } else if (networkMode == Utility.NetworkMode.MOBILE) {
+
+            // Mobile Network Details
+            TelephonyManager telephonyManager = (TelephonyManager) this.getSystemService(Context.TELEPHONY_SERVICE);
+            CellInfoGsm cellinfogsm = (CellInfoGsm) telephonyManager.getAllCellInfo().get(0);
+            CellSignalStrengthGsm cellSignalStrengthGsm = cellinfogsm.getCellSignalStrength();
+
+            String status = " Network Status: Mobile Network, Network Id: " + String.valueOf(telephonyManager.getNetworkOperatorName()) + ", Speed: " + String.valueOf(cellSignalStrengthGsm.getDbm());
+
+            Log.d(DEBUG_TAG, status);
+            return status;
         } else {
-            networkMode = NetworkMode.NO_NETWORK;
+            Log.d(DEBUG_TAG, " Network Status: Network Not Available");
+            return "Network Status: Network Not Available";
         }
-        return networkMode;
     }
 }

@@ -53,9 +53,9 @@
             android:paddingLeft="@dimen/text_gap_padding"
             android:paddingRight="@dimen/text_gap_padding"
             android:paddingStart="@dimen/text_gap_padding"
-            android:text="@string/main_hint_service_duration"
             android:textAppearance="?android:textAppearanceSmall"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            tools:text="@string/main_hint_service_duration" />
     </LinearLayout>
 
 
@@ -64,7 +64,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:onClick="onClickButtonStartService"
-        android:text="@string/home_button_start_service"
+        android:text="@string/main_button_start_service"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"

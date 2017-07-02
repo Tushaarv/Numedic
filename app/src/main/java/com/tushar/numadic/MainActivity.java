@@ -8,12 +8,16 @@ import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
 public class MainActivity extends Activity {
 
     private TextView textServiceStatus, textServiceDuration;
+    private Button buttonService;
+    private Intent intent;
+    private DataManager dataManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -22,16 +26,34 @@ public class MainActivity extends Activity {
 
         textServiceStatus = findViewById(R.id.main_text_service_status);
         textServiceDuration = findViewById(R.id.main_text_service_duration);
+        buttonService = findViewById(R.id.main_button_start_service);
+
+        dataManager = new DataManager(this);
+        intent = new Intent(this, NumadicService.class);
+
     }
 
+    /**
+     * This listener will start the service if it is not running
+     * If service is running it will stop it
+     *
+     * @param view
+     */
     public void onClickButtonStartService(View view) {
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        if (dataManager.getServiceStatus()) {
 
-            if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, 1001);
-            } else {
-                serviceStart();
+            serviceStop();
+        } else {
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+
+                if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, 1001);
+                } else {
+
+                    serviceStart();
+                }
             }
         }
     }
@@ -40,20 +62,11 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
 
-        DataManager dataManager = new DataManager(this);
-        boolean isServiceRunning = dataManager.getServiceStatus();
-
-        if (isServiceRunning) {
-            textServiceStatus.setText(R.string.service_status_running);
-            textServiceStatus.setTextColor(Color.GREEN);
-
-            String serviceStartTime = dataManager.getServiceStartTime();
-            String duration = TimeManager.findTimeDifference(serviceStartTime);
-            textServiceDuration.setText(duration);
+        if (dataManager.getServiceStatus()) {
+            postServiceStart();
 
         } else {
-            textServiceStatus.setText(R.string.service_status_not_running);
-            textServiceStatus.setTextColor(Color.RED);
+            postServiceStop();
         }
     }
 
@@ -72,37 +85,54 @@ public class MainActivity extends Activity {
         }
     }
 
+    /**
+     * Starts Service
+     */
     private void serviceStart() {
-        startService(new Intent(this, NumadicService.class));
-
-        DataManager dataManager = new DataManager(this);
+        startService(intent);
         dataManager.setServiceStatus(true);
         dataManager.setServiceStartTime(TimeManager.getCurrentUTCTime());
+        postServiceStart();
+    }
+
+    /**
+     * Processes after service is started
+     */
+    private void postServiceStart() {
+
         textServiceStatus.setText(R.string.service_status_running);
         textServiceStatus.setTextColor(Color.GREEN);
+
+        String serviceStartTime = dataManager.getServiceStartTime();
+        String duration = TimeManager.findTimeDifference(serviceStartTime);
+        textServiceDuration.setText(duration);
+
+        buttonService.setText(R.string.main_button_stop_service);
+    }
+
+    /**
+     * Stops Service
+     */
+    private void serviceStop() {
+        stopService(intent);
+        dataManager.setServiceStatus(false);
+        dataManager.setServiceStartTime(null);
+        postServiceStop();
+    }
+
+
+    /**
+     * Processes after service is stopped
+     */
+    private void postServiceStop() {
+
+        textServiceStatus.setText(R.string.service_status_not_running);
+        textServiceStatus.setTextColor(Color.RED);
+
+        String serviceStartTime = dataManager.getServiceStartTime();
+        String duration = TimeManager.findTimeDifference(serviceStartTime);
+        textServiceDuration.setText(duration);
+
+        buttonService.setText(R.string.main_button_start_service);
     }
 }
-
-
-//TODO Start The Service
-
-//    int data = 0;
-//    int location = 0;
-//
-//    NFileManager fileManager = new NFileManager();
-//        File file = fileManager.getHealthFile(this);
-//        fileManager.writeToAFile(file, "Data: " + data);
-//        data++;
-//
-//        file = fileManager.getLocationFile(this);
-//        fileManager.writeToAFile(file, "LocationData: " + location);
-//        location++;
-
-//        startService(new Intent(this, NumadicService.class));
-
-//        if (isMyServiceRunning(NumadicService.class)) {
-//            Toast.makeText(getBaseContext(), "Service is already running", Toast.LENGTH_SHORT).show();
-//        } else {
-//
-//            Toast.makeText(getBaseContext(), "There is no service running, starting service..", Toast.LENGTH_SHORT).show();
-//        }
