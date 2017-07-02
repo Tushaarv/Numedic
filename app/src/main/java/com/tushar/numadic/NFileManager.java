@@ -121,7 +121,8 @@ public class NFileManager {
         String separator = "\n\r";
         FileOutputStream fileOutputStream;
         try {
-            fileOutputStream = new FileOutputStream(file.getAbsoluteFile());
+            fileOutputStream = new FileOutputStream(file.getAbsoluteFile(),true);
+
 
             OutputStreamWriter outputStreamWriter = new OutputStreamWriter(fileOutputStream);
             outputStreamWriter.append(string);
