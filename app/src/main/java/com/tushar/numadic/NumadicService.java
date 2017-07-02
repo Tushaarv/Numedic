@@ -171,8 +171,8 @@ public class NumadicService extends Service {
 
                 locationManager.removeUpdates(locationListener);
 
-                // Validation : Save Only If 5 Satellites foundand accuracy between 2 to 15
-                if (satelliteCount > 5 && (location.getAccuracy() > 2.0 && location.getAccuracy() < 15.0)) {
+                // Validation : Save Only If 5 Satellites foundand accuracy between 2 to 15 (commented this code as it was difficult to test and record data in the file if required can uncomment and test it)
+               // if (satelliteCount > 5 && (location.getAccuracy() > 2.0 && location.getAccuracy() < 15.0)) {
                     new DataManager(NumadicService.this).setLocation(new LocationData(location.getLatitude(), location.getLongitude()));
 
                     // Save LocationData in the file;
@@ -184,7 +184,7 @@ public class NumadicService extends Service {
 
                     Log.d(DEBUG_TAG, locationValue);
                     fileManager.writeToAFile(file, locationValue);
-                }
+              //  }
             }
 
             public void onStatusChanged(String provider, int status, Bundle extras) {
