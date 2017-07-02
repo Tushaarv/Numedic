@@ -29,7 +29,7 @@ public class MainActivity extends Activity {
 //        data++;
 //
 //        file = fileManager.getLocationFile(this);
-//        fileManager.writeToAFile(file, "Location: " + location);
+//        fileManager.writeToAFile(file, "LocationData: " + location);
 //        location++;
 
 //        startService(new Intent(this, NumadicService.class));

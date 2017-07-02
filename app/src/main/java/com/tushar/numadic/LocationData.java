@@ -5,19 +5,19 @@ package com.tushar.numadic;
  * Created on 01/07/17.
  */
 
-public class Location {
+public class LocationData {
 
     private double latitude;
     private double longitude;
 
-    public Location(double latitude, double longitude) {
+    public LocationData(double latitude, double longitude) {
         this.latitude = latitude;
         this.longitude = longitude;
     }
 
-    public Location getLocation() {
+    public LocationData getLocation() {
 
-        return new Location(latitude, longitude);
+        return new LocationData(latitude, longitude);
     }
 
     public double getLatitude() {

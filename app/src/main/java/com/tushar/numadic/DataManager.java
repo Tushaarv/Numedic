@@ -56,18 +56,18 @@ public class DataManager {
         preferences.edit().putString(filePrefix, fileSuffix).apply();
     }
 
-    public Location getLocation() {
+    public LocationData getLocation() {
         String latitude = preferences.getString(LATITUDE, null);
         String longitude = preferences.getString(LONGITUDE, null);
 
         if (latitude == null || longitude == null) {
             return null;
         } else {
-            return new Location(Double.parseDouble(latitude), Double.parseDouble(longitude));
+            return new LocationData(Double.parseDouble(latitude), Double.parseDouble(longitude));
         }
     }
 
-    public void setLocation(Location location) {
+    public void setLocation(LocationData location) {
         preferences.edit().putString(LATITUDE, String.valueOf(location.getLatitude())).apply();
         preferences.edit().putString(LONGITUDE, String.valueOf(location.getLongitude())).apply();
     }

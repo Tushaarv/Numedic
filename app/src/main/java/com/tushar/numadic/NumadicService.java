@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.net.ConnectivityManager;
@@ -70,7 +71,7 @@ public class NumadicService extends IntentService {
             trackLocation();
         }
 
-//        Location location = new DataManager(context).getLocation();
+//        LocationData location = new DataManager(context).getLocation();
 //        if (isValidated()) {
 //            trackLocation();
 //
@@ -164,7 +165,7 @@ public class NumadicService extends IntentService {
 
     private void trackLocation() {
 
-        final Location lastLocation = new DataManager(this).getLocation();
+        final LocationData lastLocation = new DataManager(this).getLocation();
 
         // Get Location
         if (locationManager != null) {
@@ -177,7 +178,7 @@ public class NumadicService extends IntentService {
         locationListener = new LocationListener() {
 
             @Override
-            public void onLocationChanged(android.location.Location location) {
+            public void onLocationChanged(Location location) {
 
                 System.out.println("Current Location Latitude: " + location.getLatitude() + " Longitude: " + location.getLongitude());
                 double velocityValue = 0;
@@ -200,9 +201,9 @@ public class NumadicService extends IntentService {
                     }
                 }
 
-                new DataManager(NumadicService.this).setLocation(new Location(location.getLatitude(), location.getLongitude()));
+                new DataManager(NumadicService.this).setLocation(new LocationData(location.getLatitude(), location.getLongitude()));
 
-                // Save Location in the file;
+                // Save LocationData in the file;
                 NFileManager fileManager = new NFileManager();
                 File file = fileManager.getLocationFile(NumadicService.this);
 
