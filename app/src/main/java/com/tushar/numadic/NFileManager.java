@@ -29,7 +29,7 @@ public class NFileManager {
      * Gives a file for specified file type
      * <p>
      * FILE_PREFIX_HEALTH = Used for files used to save Health Data
-     * FILE_PREFIX_LOCATION = Used for files used to save Location Data
+     * FILE_PREFIX_LOCATION = Used for files used to save LocationData Data
      * File Suffix is going to be UTC Time Value
      *
      * @param context
@@ -101,7 +101,7 @@ public class NFileManager {
     }
 
     /**
-     * Gives a file for a Location Data
+     * Gives a file for a LocationData Data
      *
      * @param context
      * @return
@@ -121,7 +121,8 @@ public class NFileManager {
         String separator = "\n\r";
         FileOutputStream fileOutputStream;
         try {
-            fileOutputStream = new FileOutputStream(file.getAbsoluteFile());
+            fileOutputStream = new FileOutputStream(file.getAbsoluteFile(),true);
+
 
             OutputStreamWriter outputStreamWriter = new OutputStreamWriter(fileOutputStream);
             outputStreamWriter.append(string);

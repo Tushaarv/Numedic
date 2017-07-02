@@ -8,7 +8,12 @@ import android.content.SharedPreferences;
  * Created on 01/07/17.
  */
 
-public class DataManager {
+class DataManager {
+
+    private static final String LATITUDE = "latitude";
+    private static final String LONGITUDE = "longitude";
+    private static final String SERVICE_STATUS = "service.status";
+    private static final String SERVICE_START_TIME = "service.start_time";
 
     private static final int PRIVATE_MODE = 0;
 
@@ -51,5 +56,38 @@ public class DataManager {
      */
     void setActiveFileSuffix(String filePrefix, String fileSuffix) {
         preferences.edit().putString(filePrefix, fileSuffix).apply();
+    }
+
+    LocationData getLocation() {
+        String latitude = preferences.getString(LATITUDE, null);
+        String longitude = preferences.getString(LONGITUDE, null);
+
+        if (latitude == null || longitude == null) {
+            return null;
+        } else {
+            return new LocationData(Double.parseDouble(latitude), Double.parseDouble(longitude));
+        }
+    }
+
+    void setLocation(LocationData location) {
+        preferences.edit().putString(LATITUDE, String.valueOf(location.getLatitude())).apply();
+        preferences.edit().putString(LONGITUDE, String.valueOf(location.getLongitude())).apply();
+    }
+
+    void setServiceStatus(boolean serviceStatus) {
+        preferences.edit().putBoolean(SERVICE_STATUS, serviceStatus).apply();
+
+    }
+
+    boolean getServiceStatus() {
+        return preferences.getBoolean(SERVICE_STATUS, false);
+    }
+
+    void setServiceStartTime(String time) {
+        preferences.edit().putString(SERVICE_START_TIME, time).apply();
+    }
+
+    String getServiceStartTime() {
+        return preferences.getString(SERVICE_START_TIME, null);
     }
 }
