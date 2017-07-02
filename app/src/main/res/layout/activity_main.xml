@@ -1,19 +1,73 @@
 <?xml version="1.0" encoding="utf-8"?>
-<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:gravity="center"
+    android:orientation="vertical"
     tools:context="com.tushar.numadic.MainActivity">
 
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/main_text_service_status"
+            android:textAppearance="?android:textAppearanceLarge" />
+
+        <TextView
+            android:id="@+id/main_text_service_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingEnd="@dimen/text_gap_padding"
+            android:paddingLeft="@dimen/text_gap_padding"
+            android:paddingRight="@dimen/text_gap_padding"
+            android:paddingStart="@dimen/text_gap_padding"
+            android:text="@string/main_hint_service_status"
+            android:textAppearance="?android:textAppearanceLarge"
+            android:textColor="@android:color/holo_green_dark"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/main_text_service_duration"
+            android:textAppearance="?android:textAppearanceSmall" />
+
+        <TextView
+            android:id="@+id/main_text_service_duration"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingEnd="@dimen/text_gap_padding"
+            android:paddingLeft="@dimen/text_gap_padding"
+            android:paddingRight="@dimen/text_gap_padding"
+            android:paddingStart="@dimen/text_gap_padding"
+            android:text="@string/main_hint_service_duration"
+            android:textAppearance="?android:textAppearanceSmall"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+
     <Button
+        android:id="@+id/main_button_start_service"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:onClick="onClickButtonStartService"
         android:text="@string/home_button_start_service"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        android:onClick="onClickButtonStartService"/>
+        app:layout_constraintTop_toTopOf="parent" />
 
-</android.support.constraint.ConstraintLayout>
+</LinearLayout>
