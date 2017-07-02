@@ -63,12 +63,12 @@ public class DataManager {
         if (latitude == null || longitude == null) {
             return null;
         } else {
-            return new Location(latitude, longitude);
+            return new Location(Double.parseDouble(latitude), Double.parseDouble(longitude));
         }
     }
 
     public void setLocation(Location location) {
-        preferences.edit().putString(LATITUDE, location.getLatitude()).apply();
-        preferences.edit().putString(LONGITUDE, location.getLongitude()).apply();
+        preferences.edit().putString(LATITUDE, String.valueOf(location.getLatitude())).apply();
+        preferences.edit().putString(LONGITUDE, String.valueOf(location.getLongitude())).apply();
     }
 }

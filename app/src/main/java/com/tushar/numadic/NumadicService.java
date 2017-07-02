@@ -37,6 +37,8 @@ public class NumadicService extends IntentService {
         NO_NETWORK
     }
 
+    private int currentLocationDuration = 30;
+
     private ServiceMode serviceMode;
 
     public NumadicService() {
@@ -55,31 +57,35 @@ public class NumadicService extends IntentService {
 
         serviceMode = ServiceMode.Idle;
 
-        locationScheduler(this);
-        healthScheduler(this);
+        locationScheduler();
+//        healthScheduler(this);
 
     }
 
-    private void locationScheduler(Context context) {
+    private void locationScheduler() {
 
         System.out.println("locationScheduler called");
 
-        Location location = new DataManager(context).getLocation();
         if (isValidated()) {
             trackLocation();
-
-            if (evaluateServiceMode(location) == ServiceMode.Idle) {
-                scheduleLocationTask(30);
-            } else {
-                scheduleLocationTask(2);
-            }
-        } else {
-            if (evaluateServiceMode(location) == ServiceMode.Idle) {
-                scheduleLocationTask(30);
-            } else {
-                scheduleLocationTask(2);
-            }
         }
+
+//        Location location = new DataManager(context).getLocation();
+//        if (isValidated()) {
+//            trackLocation();
+//
+//            if (evaluateServiceMode(location) == ServiceMode.Idle) {
+//                scheduleLocationTask(30);
+//            } else {
+//                scheduleLocationTask(2);
+//            }
+//        } else {
+//            if (evaluateServiceMode(location) == ServiceMode.Idle) {
+//                scheduleLocationTask(30);
+//            } else {
+//                scheduleLocationTask(2);
+//            }
+//        }
 
 
         // 1 If last location is not known
@@ -98,64 +104,21 @@ public class NumadicService extends IntentService {
         // 5 Schedule next Itiration for 30 minutes
     }
 
-    private ServiceMode evaluateServiceMode(Location location) {
-        ServiceMode serviceMode = ServiceMode.Idle;
+    private ServiceMode evaluateServiceMode(double distance, double velocity) {
+        ServiceMode serviceMode;
 
-        // If your current speed is more than 5kmph
-        String speeed = getCurrentSpeed();
+        // If your current speed is more than 5 KMPH
+        // If you have moved for more than 50m since last location
+        // Then Active
 
-        // If you have moved for more than 50m since last location data
+        if (velocity > 5 || distance * 1000 > 50) {
+            serviceMode = ServiceMode.Active;
+        } else {
+            // Otherwise Idle.
+            serviceMode = ServiceMode.Idle;
+        }
 
         return serviceMode;
-    }
-
-    private String getCurrentSpeed() {
-        if (locationManager != null) {
-            locationManager.removeUpdates(locationListener);
-
-            locationManager = null;
-            locationListener = null;
-
-        }
-
-        locationManager = (LocationManager) this
-                .getSystemService(Context.LOCATION_SERVICE);
-
-
-        locationListener = new LocationListener() {
-
-            @Override
-            public void onLocationChanged(android.location.Location location) {
-                location.getLatitude();
-//                (sqrt((currentGPSPointX - lastGPSPointX)^2) + (currentGPSPointY - lastGPSPointY)^2)) / (time between GPS points)
-//                (Math.sqrt(Math.pow(location.getLatitude() - location.getLongitude(), 2.0) + (currentGPSPointY - lastGPSPointY)^2)) / (time between GPS points)
-                System.out.println("Current speed:" + location.getSpeed() + " And " + location.hasSpeed());
-            }
-
-            public void onStatusChanged(String provider, int status, Bundle extras) {
-            }
-
-            public void onProviderEnabled(String provider) {
-            }
-
-            public void onProviderDisabled(String provider) {
-            }
-        };
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED && checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
-                locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
-
-            }
-        } else {
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
-            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
-
-        }
-
-        //Read more: http://www.androidhub4you.com/2013/06/how-to-get-device-current-speed-in_112.html#ixzz4ldj3qXd5
-        return null;
     }
 
     private void healthScheduler(Context context) {
@@ -169,9 +132,9 @@ public class NumadicService extends IntentService {
     private boolean isValidated() {
         boolean success = true;
 
-//        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
 //            GnssStatus gnssStatus = new GnssStatus();
-//        }
+        }
 
 
         return success;
@@ -194,14 +157,103 @@ public class NumadicService extends IntentService {
         handler.postDelayed(new Runnable() {
             @Override
             public void run() {
-                locationScheduler(NumadicService.this);
+                locationScheduler();
             }
         }, 1000 * duration);
     }
 
     private void trackLocation() {
+
+        final Location lastLocation = new DataManager(this).getLocation();
+
         // Get Location
-        // Save Location in the file;
+        if (locationManager != null) {
+            locationManager.removeUpdates(locationListener);
+            locationManager = null;
+            locationListener = null;
+        }
+
+        locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+        locationListener = new LocationListener() {
+
+            @Override
+            public void onLocationChanged(android.location.Location location) {
+
+                System.out.println("Current Location Latitude: " + location.getLatitude() + " Longitude: " + location.getLongitude());
+                double velocityValue = 0;
+
+                if (lastLocation != null) {
+
+                    double distance = calculateDistance(lastLocation.getLatitude(), lastLocation.getLongitude(), location.getLatitude(), location.getLongitude());
+                    double timeValue = currentLocationDuration;
+                    velocityValue = distance / timeValue;
+
+                    System.out.println("Distance: " + distance + " Time: " + timeValue + " Velocity:" + velocityValue);
+
+                    locationManager.removeUpdates(locationListener);
+                    evaluateServiceMode(distance, velocityValue);
+
+                    if (serviceMode == ServiceMode.Active) {
+                        scheduleLocationTask(2);
+                    } else {
+                        scheduleLocationTask(30);
+                    }
+                }
+
+                new DataManager(NumadicService.this).setLocation(new Location(location.getLatitude(), location.getLongitude()));
+
+                // Save Location in the file;
+                NFileManager fileManager = new NFileManager();
+                File file = fileManager.getLocationFile(NumadicService.this);
+
+//                Lat , Lon , UTC Time, Velocity, Accuracy, Satellites used
+                String locationValue = "Latitude: " + location.getLatitude() + " Longitude : " + location.getLongitude() + " UTC Time: " + TimeManager.getCurrentUTCTime() + " Velocity :"
+                        + velocityValue + " Accuracy :" + location.getAccuracy();  //+ " Satellites Used : " + location.ssa;
+                fileManager.writeToAFile(file, locationValue);
+            }
+
+            public void onStatusChanged(String provider, int status, Bundle extras) {
+            }
+
+            public void onProviderEnabled(String provider) {
+            }
+
+            public void onProviderDisabled(String provider) {
+            }
+        };
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED && checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
+                locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
+
+            }
+        } else {
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
+            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
+        }
+    }
+
+
+    private double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+        double theta = lon1 - lon2;
+        double dist = Math.sin(deg2rad(lat1))
+                * Math.sin(deg2rad(lat2))
+                + Math.cos(deg2rad(lat1))
+                * Math.cos(deg2rad(lat2))
+                * Math.cos(deg2rad(theta));
+        dist = Math.acos(dist);
+        dist = rad2deg(dist);
+        dist = dist * 60 * 1.1515;
+        return (dist);
+    }
+
+    private double deg2rad(double deg) {
+        return (deg * Math.PI / 180.0);
+    }
+
+    private double rad2deg(double rad) {
+        return (rad * 180.0 / Math.PI);
     }
 
     private void trackHealth(Context context) {
@@ -286,13 +338,13 @@ public class NumadicService extends IntentService {
         final android.net.NetworkInfo mobile = manager.getActiveNetworkInfo();
 
         if (wifi == null && mobile == null) {
-            networkMode = NetworkMode.NO_NETWORK; // "noNetwork";
-        } else if (wifi.getType() == ConnectivityManager.TYPE_WIFI) {
-            networkMode = NetworkMode.WIFI; //"wifi";
-        } else if (mobile.getType() == ConnectivityManager.TYPE_MOBILE) {
-            networkMode = NetworkMode.MOBILE;// "mobileData";
+            networkMode = NetworkMode.NO_NETWORK;
+        } else if (wifi != null && wifi.getType() == ConnectivityManager.TYPE_WIFI) {
+            networkMode = NetworkMode.WIFI;
+        } else if (mobile != null && mobile.getType() == ConnectivityManager.TYPE_MOBILE) {
+            networkMode = NetworkMode.MOBILE;
         } else {
-            networkMode = NetworkMode.NO_NETWORK; // "noNetwork";
+            networkMode = NetworkMode.NO_NETWORK;
         }
         return networkMode;
     }
