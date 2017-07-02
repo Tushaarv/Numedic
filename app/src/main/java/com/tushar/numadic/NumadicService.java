@@ -28,6 +28,10 @@ public class NumadicService extends Service {
 
     private static final String DEBUG_TAG = "NumadicService";
 
+    private static final int SCHEDULE_TIME_LOCATION_IDLE = 30 * 60;
+    private static final int SCHEDULE_TIME_LOCATION_ACTIVE = 2 * 60;
+    private static final int SCHEDULE_TIME_HEALTH = 10 * 60;
+
     private LocationManager locationManager;
     private LocationListener locationListener;
 
@@ -160,12 +164,12 @@ public class NumadicService extends Service {
 
                     evaluateServiceMode(distance, velocityValue);
                     if (serviceMode == ServiceMode.Active) {
-                        scheduleLocationTask(2);
+                        scheduleLocationTask(SCHEDULE_TIME_LOCATION_ACTIVE);
                     } else {
-                        scheduleLocationTask(30);
+                        scheduleLocationTask(SCHEDULE_TIME_LOCATION_IDLE);
                     }
                 } else {
-                    scheduleLocationTask(30);
+                    scheduleLocationTask(SCHEDULE_TIME_LOCATION_IDLE);
                 }
 
                 new DataManager(NumadicService.this).setLocation(new LocationData(location.getLatitude(), location.getLongitude()));
@@ -201,8 +205,6 @@ public class NumadicService extends Service {
         }
 
         locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
-//        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
-
     }
 
 
@@ -211,7 +213,7 @@ public class NumadicService extends Service {
         // Find Health
         trackHealth(context);
         // Schedule next Iteration after 10 minutes
-        scheduleHealthTask(10);
+        scheduleHealthTask(SCHEDULE_TIME_HEALTH);
     }
 
     private void scheduleHealthTask(int duration) {
