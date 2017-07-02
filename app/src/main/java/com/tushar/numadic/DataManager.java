@@ -10,6 +10,9 @@ import android.content.SharedPreferences;
 
 public class DataManager {
 
+    private static final String LATITUDE = "latitude";
+    private static final String LONGITUDE = "longitude";
+
     private static final int PRIVATE_MODE = 0;
 
     // Shared Preferences
@@ -51,5 +54,21 @@ public class DataManager {
      */
     void setActiveFileSuffix(String filePrefix, String fileSuffix) {
         preferences.edit().putString(filePrefix, fileSuffix).apply();
+    }
+
+    public Location getLocation() {
+        String latitude = preferences.getString(LATITUDE, null);
+        String longitude = preferences.getString(LONGITUDE, null);
+
+        if (latitude == null || longitude == null) {
+            return null;
+        } else {
+            return new Location(latitude, longitude);
+        }
+    }
+
+    public void setLocation(Location location) {
+        preferences.edit().putString(LATITUDE, location.getLatitude()).apply();
+        preferences.edit().putString(LONGITUDE, location.getLongitude()).apply();
     }
 }
